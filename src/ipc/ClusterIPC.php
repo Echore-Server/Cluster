@@ -59,7 +59,6 @@ class ClusterIPC implements NetworkInterface {
 			throw new RuntimeException("Failed to bind socket" . socket_strerror(socket_last_error()));
 		}
 
-		var_dump($this->info);
 		@socket_set_option($this->socket, SOL_SOCKET, SO_RCVBUF, 1024 * 1024 * 8);
 		@socket_set_option($this->socket, SOL_SOCKET, SO_SNDBUF, 1024 * 1024 * 8);
 		@socket_set_option($this->socket, SOL_SOCKET, SO_KEEPALIVE, 1);
