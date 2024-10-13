@@ -80,7 +80,7 @@ class ClusterIPC implements NetworkInterface {
 				}
 				$this->logger->debug("Received packet from {$obj->clusterInfo->identifier}, packet: " . $obj->packet::class);
 
-				$ev = new ClusterPacketReceiveEvent($obj->clusterInfo, $obj->packet);
+				$ev = new ClusterPacketReceiveEvent($this, $obj->clusterInfo, $obj->packet);
 				$ev->call();
 			}
 		});
