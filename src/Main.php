@@ -4,14 +4,15 @@ declare(strict_types=1);
 
 namespace Echore\Cluster;
 
-use Echore\Cluster\event\ClusterIPCStartupEvent;
 use Echore\Cluster\ipc\ClusterIPC;
 use pocketmine\plugin\PluginBase;
 use pocketmine\utils\Config;
+use pocketmine\utils\SingletonTrait;
 use RuntimeException;
 use Symfony\Component\Filesystem\Path;
 
 class Main extends PluginBase {
+	use SingletonTrait;
 
 	private ClusterConfiguration $configuration;
 
@@ -27,6 +28,7 @@ class Main extends PluginBase {
 	}
 
 	protected function onLoad(): void {
+		self::setInstance($this);
 		$configDefPath = Path::join($this->getDataFolder(), "path.txt");
 		$clusterPath = Path::join($this->getDataFolder(), "cluster.txt");
 		if (!file_exists($configDefPath)) {
@@ -78,9 +80,6 @@ class Main extends PluginBase {
 			$this->getServer()->getLogger(),
 			$this->getServer()->getTickSleeper()
 		);
-
-		$ev = new ClusterIPCStartupEvent($this->ipc);
-		$ev->call();
 
 		$this->getServer()->getNetwork()->registerInterface($this->ipc);
 	}

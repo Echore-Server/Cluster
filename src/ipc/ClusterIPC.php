@@ -141,6 +141,10 @@ class ClusterIPC implements NetworkInterface {
 		}
 	}
 
+	public function broadcastPacket(ClusterPacket $packet): void {
+		$this->thread->broadcastPacket($packet);
+	}
+
 	public function shutdown(): void {
 		$this->thread->kill();
 		$this->thread->notify();

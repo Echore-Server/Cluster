@@ -24,7 +24,7 @@
 
 1. [ClusterPacket](src/ipc/packet/ClusterPacket.php) を継承するクラスを作成
 2. 適切なIDを設定 (`getId`, 被らないように `<PluginName>:<Identifier>` のようなIDをお勧めします。)
-3. [ClusterIPCStartupEvent](src/event/ClusterIPCStartupEvent.php) をリッスンして [ClusterIPC](src/ipc/ClusterIPC.php)
+3. Main から [ClusterIPC](src/ipc/ClusterIPC.php)
    を取得し、[ClusterPacketPool](src/ipc/packet/ClusterPacketPool.php) にパケットを登録<br>
 
 ### パケットハンドリング
