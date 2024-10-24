@@ -75,6 +75,7 @@ class Main extends PluginBase {
 	protected function onEnable(): void {
 		$this->getLogger()->info("Starting cluster IPC at {$this->info->ipcAddress}:{$this->info->ipcPort}");
 		$this->ipc = new ClusterIPC(
+			$this->getServer(),
 			$this->info,
 			$this->configuration,
 			$this->getServer()->getLogger(),

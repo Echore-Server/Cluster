@@ -16,6 +16,7 @@ use pocketmine\snooze\SleeperHandlerEntry;
 use pocketmine\thread\log\ThreadSafeLogger;
 use pocketmine\thread\Thread;
 use pocketmine\utils\BinaryStream;
+use pocketmine\utils\Process;
 use raklib\generic\SocketException;
 use RuntimeException;
 use Socket;
@@ -35,6 +36,8 @@ class ClusterThread extends Thread {
 
 	private bool $kill;
 
+	private bool $forceKillEnabled;
+
 	public function __construct(
 		private readonly Socket               $socket,
 		private readonly ClusterServerInfo    $info,
@@ -49,29 +52,7 @@ class ClusterThread extends Thread {
 		$this->sendQueue = new ThreadSafeArray();
 		$this->connections = new ThreadSafeArray();
 		$this->kill = false;
-	}
-
-	public function kill(): void {
-		$this->kill = true;
-
-		$this->logger->info("Sending bye to connected clusters");
-		$this->broadcastPacket(new ClusterPacketSessionClose());
-	}
-
-	public function broadcastPacket(ClusterPacket $packet): void {
-		$this->connections->synchronized(function() use ($packet): void {
-			foreach ($this->connections as $info) {
-				$this->sendPacketTo($info->ipcAddress, $info->ipcPort, $packet);
-			}
-		});
-	}
-
-	protected function sendPacketTo(string $ip, int $port, ClusterPacket $packet): void {
-		$this->sendQueue->synchronized(function() use ($ip, $port, $packet): void {
-			$arr = $this->sendQueue["$ip:$port"] ??= new ThreadSafeArray();
-			$arr[] = $packet;
-		});
-		$this->notify();
+		$this->forceKillEnabled = false;
 	}
 
 	/**
@@ -107,6 +88,7 @@ class ClusterThread extends Thread {
 	}
 
 	protected function onRun(): void {
+		gc_enable();
 		$lastKeepAlive = [];
 		$notifier = $this->sleeper->createNotifier();
 
@@ -189,8 +171,14 @@ class ClusterThread extends Thread {
 		// fixme: can't shutdown
 		// BULLSHIT WINDOWS?
 
-		socket_set_block($this->socket);
 		@socket_close($this->socket);
+		unset($notifier, $this->info, $this->logger, $this->config, $this->clientInfos, $this->connections, $this->nextPacketId, $this->receivedPackets, $this->sendQueue, $this->socket, $this->sleeper, $this->packetPool);
+
+		if ($this->forceKillEnabled) {
+			// FUCKING PATCH
+			sleep(1);
+			Process::kill(Process::pid());
+		}
 	}
 
 	protected function helloToClusters(): void {
@@ -209,6 +197,14 @@ class ClusterThread extends Thread {
 				}
 			}
 		});
+	}
+
+	protected function sendPacketTo(string $ip, int $port, ClusterPacket $packet): void {
+		$this->sendQueue->synchronized(function() use ($ip, $port, $packet): void {
+			$arr = $this->sendQueue["$ip:$port"] ??= new ThreadSafeArray();
+			$arr[] = $packet;
+		});
+		$this->notify();
 	}
 
 	protected function flushQueuedPackets(): void {
@@ -339,6 +335,21 @@ class ClusterThread extends Thread {
 	public function getConnectedClusterInfo(string $ip, int $port): ?ClusterServerInfo {
 		return $this->connections->synchronized(function() use ($ip, $port): ?ClusterServerInfo {
 			return $this->connections["$ip:$port"];
+		});
+	}
+
+	public function kill(bool $forceKill): void {
+		$this->logger->info("Sending bye to connected clusters");
+		$this->broadcastPacket(new ClusterPacketSessionClose());
+		$this->kill = true;
+		$this->forceKillEnabled = $forceKill;
+	}
+
+	public function broadcastPacket(ClusterPacket $packet): void {
+		$this->connections->synchronized(function() use ($packet): void {
+			foreach ($this->connections as $info) {
+				$this->sendPacketTo($info->ipcAddress, $info->ipcPort, $packet);
+			}
 		});
 	}
 }
