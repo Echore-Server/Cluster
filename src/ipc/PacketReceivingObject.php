@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Echore\Cluster\ipc;
 
 use Echore\Cluster\ClusterServerInfo;
-use Echore\Cluster\ipc\packet\ClusterPacket;
 use pmmp\thread\ThreadSafe;
 
 class PacketReceivingObject extends ThreadSafe {
@@ -16,15 +15,15 @@ class PacketReceivingObject extends ThreadSafe {
 
 	public ClusterServerInfo $clusterInfo;
 
-	public ClusterPacket $packet;
+	public string $packet;
 
 	/**
 	 * @param string $ip
 	 * @param int $port
 	 * @param ClusterServerInfo $clusterInfo
-	 * @param ClusterPacket $packet
+	 * @param string $packet
 	 */
-	public function __construct(string $ip, int $port, ClusterServerInfo $clusterInfo, ClusterPacket $packet) {
+	public function __construct(string $ip, int $port, ClusterServerInfo $clusterInfo, string $packet) {
 		$this->ip = $ip;
 		$this->port = $port;
 		$this->clusterInfo = $clusterInfo;

@@ -95,7 +95,7 @@ class ClusterThread extends Thread {
 		$this->helloToClusters();
 
 		while (!$this->kill) {
-			$this->wait(1000 * 1000 / 2);
+			$this->wait();
 
 			$this->flushQueuedPackets();
 
@@ -156,7 +156,12 @@ class ClusterThread extends Thread {
 					if ($pk instanceof ClusterPacketSessionClose) {
 						$afterDisconnect = true;
 					}
-					$this->receivedPackets[$this->nextPacketId++] = new PacketReceivingObject($ip, $port, $clusterInfo, $pk);
+					// bullshit implementation, integrate to ClusterIPC I think
+					$stream = new BinaryStream();
+					$stream->putUnsignedVarInt(strlen($pk->getId()));
+					$stream->put($pk->getId());
+					$pk->encode($stream);
+					$this->receivedPackets[$this->nextPacketId++] = new PacketReceivingObject($ip, $port, $clusterInfo, $stream->getBuffer());
 				}
 
 				$notifier->wakeupSleeper();
@@ -202,9 +207,12 @@ class ClusterThread extends Thread {
 	protected function sendPacketTo(string $ip, int $port, ClusterPacket $packet): void {
 		$this->sendQueue->synchronized(function() use ($ip, $port, $packet): void {
 			$arr = $this->sendQueue["$ip:$port"] ??= new ThreadSafeArray();
-			$arr[] = $packet;
+			$stream = new BinaryStream();
+			$stream->putUnsignedVarInt(strlen($packet->getId()));
+			$stream->put($packet->getId());
+			$packet->encode($stream);
+			$arr[] = $stream->getBuffer();
 		});
-		$this->notify();
 	}
 
 	protected function flushQueuedPackets(): void {
@@ -221,14 +229,7 @@ class ClusterThread extends Thread {
 				$stream = new BinaryStream();
 				while ($queue->count() > 0) {
 					$pk = $queue->shift();
-
-					/**
-					 * @var ClusterPacket $pk
-					 */
-
-					$stream->putUnsignedVarInt(strlen($pk->getId()));
-					$stream->put($pk->getId());
-					$pk->encode($stream);
+					$stream->put($pk);
 				}
 
 				if (@socket_sendto($this->socket, $stream->getBuffer(), strlen($stream->getBuffer()), 0, $ip, $port) === false) {

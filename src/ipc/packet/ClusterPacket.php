@@ -4,10 +4,9 @@ declare(strict_types=1);
 
 namespace Echore\Cluster\ipc\packet;
 
-use pmmp\thread\ThreadSafe;
 use pocketmine\utils\BinaryStream;
 
-abstract class ClusterPacket extends ThreadSafe {
+abstract class ClusterPacket {
 
 	final public function __construct() {
 	}

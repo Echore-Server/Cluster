@@ -19,7 +19,9 @@ use pocketmine\Server;
 use pocketmine\snooze\SleeperHandler;
 use pocketmine\snooze\SleeperHandlerEntry;
 use pocketmine\thread\log\ThreadSafeLogger;
+use pocketmine\utils\BinaryStream;
 use RuntimeException;
+use Throwable;
 
 class ClusterIPC implements NetworkInterface {
 
@@ -79,7 +81,21 @@ class ClusterIPC implements NetworkInterface {
 
 		$this->sleeperHandlerEntry = $sleeper->addNotifier(function(): void {
 			foreach ($this->thread->fetchPackets() as $obj) {
-				$packet = $obj->packet;
+				$stream = new BinaryStream($obj->packet);
+				$packetId = $stream->get($stream->getUnsignedVarInt());
+				$packet = $this->packetPool->get($packetId);
+
+				if ($packet === null) {
+					$this->logger->error("Unknown packet delivered from thread: $packetId");
+
+					return;
+				}
+				try {
+					$packet->decode($stream);
+				} catch (Throwable $e) {
+					continue;
+				}
+
 				if ($packet instanceof ClusterPacketKeepAlive) {
 					if ($packet->response) {
 						$this->lastKeepAliveResponse[$obj->clusterInfo->identifier] = time();
@@ -89,9 +105,9 @@ class ClusterIPC implements NetworkInterface {
 						$this->sendPacket($obj->clusterInfo->identifier, $resPk);
 					}
 				}
-				$this->logger->debug("Received packet from {$obj->clusterInfo->identifier}, packet: " . $obj->packet::class);
+				//$this->logger->debug("Received packet from {$obj->clusterInfo->identifier}, packet: " . $packet->getId());
 
-				$ev = new ClusterPacketReceiveEvent($this, $obj->clusterInfo, $obj->packet);
+				$ev = new ClusterPacketReceiveEvent($this, $obj->clusterInfo, $packet);
 				$ev->call();
 			}
 		});
@@ -204,6 +220,8 @@ class ClusterIPC implements NetworkInterface {
 			$pk->response = false;
 			$this->thread->broadcastPacket($pk);
 		}
+
+		$this->thread->notify();
 	}
 
 	public function broadcastPacket(ClusterPacket $packet): void {
