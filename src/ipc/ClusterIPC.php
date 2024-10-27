@@ -6,6 +6,7 @@ namespace Echore\Cluster\ipc;
 
 use Echore\Cluster\ClusterConfiguration;
 use Echore\Cluster\ClusterServerInfo;
+use Echore\Cluster\event\ClusterConnectedEvent;
 use Echore\Cluster\event\ClusterDisconnectedEvent;
 use Echore\Cluster\event\ClusterPacketReceiveEvent;
 use Echore\Cluster\ipc\packet\ClusterPacket;
@@ -186,7 +187,7 @@ class ClusterIPC implements NetworkInterface {
 					 * @var ClusterServerInfo $info
 					 */
 
-					$ev = new ClusterDisconnectedEvent($info);
+					$ev = new ClusterConnectedEvent($info);
 					$ev->call();
 
 					$this->lastKeepAliveResponse[$info->identifier] = time();
