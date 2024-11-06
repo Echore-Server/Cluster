@@ -273,6 +273,8 @@ class ClusterThread extends Thread {
 			try {
 				$packet->decode($stream);
 			} catch (Throwable $e) {
+				$this->logger->error("Error occurred during decoding packet $packetId");
+				$this->logger->logException($e);
 				break;
 			}
 
